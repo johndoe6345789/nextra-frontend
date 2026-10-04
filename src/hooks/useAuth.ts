@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '@/store/store';
 import { clearCredentials, setCredentials } from '@/store/slices/authSlice';
@@ -10,7 +10,10 @@ import {
   useLogoutMutation,
 } from '@/store/api/authApi';
 import type { User, LoginRequest, RegisterRequest } from '@/types/auth';
-import { readKeycloakUser } from './keycloakUserMap';
+import { COOKIE, readCookie } from '@/lib/keycloakCookies';
+import { keycloakUserFromToken } from './keycloakUserMap';
+
+const subscribeNoop = () => () => {};
 
 /** Return type for the useAuth hook. */
 interface UseAuthReturn {
@@ -42,7 +45,19 @@ export function useAuth(): UseAuthReturn {
   // derive the User shape directly from the JWT claims
   // and bypass /api/auth/me entirely. Legacy state is
   // kept as a fallback.
-  const kc = readKeycloakUser();
+  // The session cookie is not available on the server, and reading it
+  // during the first client render makes React reject the server HTML
+  // (hydration error #418). useSyncExternalStore renders the server
+  // snapshot (no token) during hydration and the cookie afterwards.
+  const token = useSyncExternalStore(
+    subscribeNoop,
+    () => readCookie(COOKIE.access),
+    () => null,
+  );
+  const kc = useMemo(
+    () => (token ? keycloakUserFromToken(token) : null),
+    [token],
+  );
   const user: User | null = kc?.user ?? slice.user;
   const isAuthenticated =
     kc !== null || slice.isAuthenticated;

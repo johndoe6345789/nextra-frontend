@@ -62,21 +62,27 @@ export function userFromKeycloakClaims(
   };
 }
 
-/**
- * Read the Keycloak access token from the nextra_sso
- * cookie and project its claims onto a User. Returns
- * null when the cookie is missing or the JWT is invalid.
- */
-export function readKeycloakUser(): {
+export function keycloakUserFromToken(tok: string): {
   user: User;
   accessToken: string;
 } | null {
-  const tok = readCookie(COOKIE.access);
-  if (!tok) return null;
   const claims = parseJwt(tok);
   if (!claims) return null;
   return {
     user: userFromKeycloakClaims(claims),
     accessToken: tok,
   };
+}
+
+/**
+ * Read the access token from the SSO cookie and project its claims
+ * onto a User. Returns null when the cookie is missing or the JWT is
+ * invalid.
+ */
+export function readKeycloakUser(): {
+  user: User;
+  accessToken: string;
+} | null {
+  const tok = readCookie(COOKIE.access);
+  return tok ? keycloakUserFromToken(tok) : null;
 }
