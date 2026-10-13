@@ -85,7 +85,11 @@ ReactElement {
         } else if (target === '/app') {
           target = '/';
         }
-        router.replace(target);
+        // Full page load: the header and store read the new session
+        // cookie on first render, which a client-side navigation from
+        // this page would not trigger.
+        const base = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+        window.location.replace(`${base}${target}`);
       } catch {
         router.replace(`/${locale}/login?error=oidc`);
       }
